@@ -1,6 +1,6 @@
 [submodule "deps/ponca"]
 	path = deps/ponca
-	url = https://github.com/poncateam/ponca.git
+	url = https://github.com/ani37/ponca.git
 [submodule "deps/polyscope"]
 	path = deps/polyscope
 	url = https://github.com/nmwsharp/polyscope.git
