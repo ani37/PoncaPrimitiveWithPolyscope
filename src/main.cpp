@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <iostream>
 #include <vector>
-#include<stdio.h>
+#include <stdio.h>
 #include "happly.h"
 #include <random>
 #include <string>
@@ -12,20 +12,18 @@
 #include "Eigen/Eigen"
 #include <Ponca/src/SpatialPartitioning/KdTree/kdTree.h>
 
-
 // Polyscope
 #include "polyscope/point_cloud.h"
 #include "polyscope/polyscope.h"
+#include "polyscope/curve_network.h"
 
 using namespace std;
 using namespace Ponca;
 
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
 #define DIMENSION 3
- 
+
 /*
    \brief Variant of the MyPoint class allowing to work with external raw data.
  
@@ -38,271 +36,209 @@ using namespace Ponca;
 class MyPoint
 {
 public:
-    enum {Dim = DIMENSION};
+    enum
+    {
+        Dim = DIMENSION
+    };
     typedef double Scalar;
-    typedef Eigen::Matrix<Scalar, Dim, 1>   VectorType;
+    typedef Eigen::Matrix<Scalar, Dim, 1> VectorType;
     typedef Eigen::Matrix<Scalar, Dim, Dim> MatrixType;
- 
-    PONCA_MULTIARCH inline MyPoint(const std::array<Scalar, 3>&poss,
-                                   const std::array<Scalar, 3>&  norm)
-        : m_pos    (Eigen::Map< const VectorType >(poss.begin())),
-          m_normal (Eigen::Map< const VectorType >(norm.begin()))
-    {}
- 
-    PONCA_MULTIARCH inline const Eigen::Map< const VectorType >& pos()    const { return m_pos; }
-    PONCA_MULTIARCH inline const Eigen::Map< const VectorType >& normal() const { return m_normal; }
- 
-private:
-    Eigen::Map< const VectorType > m_pos, m_normal;
-}; 
 
+    PONCA_MULTIARCH inline MyPoint(const std::array<Scalar, 3> &poss,
+                                   const std::array<Scalar, 3> &norm)
+        : m_pos(Eigen::Map<const VectorType>(poss.begin())),
+          m_normal(Eigen::Map<const VectorType>(norm.begin()))
+    {
+    }
+
+    PONCA_MULTIARCH inline const Eigen::Map<const VectorType> &pos() const { return m_pos; }
+    PONCA_MULTIARCH inline const Eigen::Map<const VectorType> &normal() const { return m_normal; }
+
+private:
+    Eigen::Map<const VectorType> m_pos, m_normal;
+};
 
 typedef MyPoint::Scalar Scalar;
 typedef MyPoint::VectorType VectorType;
- 
-vector<MyPoint> points;
-
 
 
 // Define related structure
-typedef DistWeightFunc<MyPoint,SmoothWeightKernel<Scalar> > WeightFunc;
+typedef DistWeightFunc<MyPoint, SmoothWeightKernel<Scalar>> WeightFunc;
 
 void loadPointCloud(std::string filename,
-                    std::vector<std::array<double, 3>>& vertexPositionsOut) {
+                    std::vector<std::array<double, 3>> &vertexPositionsOut)
+{
 
-  happly::PLYData plyIn(filename);
+    happly::PLYData plyIn(filename);
 
-  // Get mesh-style data from the object
-  vertexPositionsOut = plyIn.getVertexPositions();
-  //faceIndicesOut = plyIn.getFaceIndices<size_t>();
-
+    // Get mesh-style data from the object
+    vertexPositionsOut = plyIn.getVertexPositions();
+    //faceIndicesOut = plyIn.getFaceIndices<size_t>();
 }
-
 
 int knei = 10;
 Scalar tmax = 0.1;
 
-// to compute normals generalised using template and functors using KNN
-template<typename FitT, typename Functor>
-void computeKnn(const KdTree<MyPoint>& structure, Functor f)
+// to compute normals or curvature generalised using template and functors using KNN
+template <typename FitT>
+vector<VectorType> compute(const vector<MyPoint>& points)
 {
-
-
-    for(int i = 0; i < points.size(); i++){
+    KdTree<MyPoint> kdtree(points);
+    vector<VectorType> projection(points.size());
+    for (int i = 0; i < points.size(); i++)
+    {
         // set evaluation point and scale at the ith coordinate
-        const VectorType& p = points.at(i).pos();
+        const VectorType &p = points.at(i).pos();
         // Here we now perform the fit
         FitT _fit;
         // Set a weighting function instance
         _fit.setWeightFunc(WeightFunc(tmax));
         // Set the evaluation position
         _fit.init(p);
-        for( auto idx : structure.k_nearest_neighbors(p, knei) ){
-            _fit.addNeighbor( points[idx] );
+        for (auto idx : kdtree.k_nearest_neighbors(p, knei))
+        {
+            _fit.addNeighbor(points[idx]);
         }
         _fit.finalize();
-	     f( i, _fit );
-    }
-}
-
-// to compute normals generalised using template and functors using Range Neighbors
-template<typename FitT, typename Functor>
-void computeRangeNeighbors(const KdTree<MyPoint>& structure, Functor f)
-{
-
-    
-    for(int i = 0; i < points.size(); i++){
-        // set evaluation point and scale at the ith coordinate
-        const VectorType& p = points.at(i).pos();
-        // Here we now perform the fit
-        FitT _fit;
-        // Set a weighting function instance
-        _fit.setWeightFunc(WeightFunc(tmax));
-        // Set the evaluation position
-        _fit.init(p);
-        for( auto idx : structure.range_neighbors(p, tmax) ){
-            _fit.addNeighbor( points[idx] );
+        if(_fit.isStable())
+        {
+            
+            projection[i] = _fit.project(p).transpose();
         }
-        _fit.finalize();
-	     f( i, _fit );
     }
-}
 
+    return projection;
+}
 
 // Your callback functions
-void myCallback() {
+void myCallback()
+{
 
-    // Since options::openImGuiWindowForUserCallback == true by default, 
+    // Since options::openImGuiWindowForUserCallback == true by default,
     // we can immediately start using ImGui commands to build a UI
 
     ImGui::PushItemWidth(100); // Make ui elements 100 pixels wide,
-                                // instead of full width. Must have 
-                                // matching PopItemWidth() below.
-                            
-
-
-    KdTree<MyPoint> kdtree(points);
-
-
+                               // instead of full width. Must have
+                               // matching PopItemWidth() below.
     if (ImGui::TreeNode("Fitting"))
     {
         if (ImGui::TreeNode("Line Fitting"))
         {
+            typedef Basket<MyPoint, WeightFunc, LeastSquareLine> Linefit;
+            
+            string filename = "line.ply";
+            std::ifstream testStream(filename);
+            if (!testStream)
+            {
+                exit(0);
+            }
 
-           if(ImGui::Button("Project points on the line"))
-           {
+            std::vector<std::array<double, 3>> positions;
+            /* Load positions from file */
+            loadPointCloud(filename, positions);
+            testStream.close();
+            
+            /* visualize! */
+            polyscope::registerPointCloud("Line positions", positions);
+            ImGui::InputInt("Variable K", &knei);          // set a float variable
 
-           }
-           ImGui::TreePop();
+            if (ImGui::Button("Find Projections"))
+            {
+                vector<MyPoint> points;
+                for (const auto &p : positions)
+                {
+                    points.push_back({p, {0, 0, 0}});
+                }
+
+                vector<VectorType> projected(compute<Linefit>(points));
+                polyscope::registerPointCloud("Line projections", projected);
+
+            }
+            ImGui::TreePop();
         }
 
         if (ImGui::TreeNode("Plane Fitting"))
         {
-            
-           
-            ImGui::TreePop();
-        }
-
-        if (ImGui::TreeNode("Sphere Fitting"))
-        {
-
-
+            typedef Basket<MyPoint, WeightFunc, CovariancePlaneFit> PlaneFit;
+        
             string filename = "hippo.ply";
-
             std::ifstream testStream(filename);
-            if (!testStream) {
+            if (!testStream)
+            {
                 exit(0);
             }
 
-            std::vector< std::array<double, 3> > positions;
-            // Load positions from file
+            std::vector<std::array<double, 3>> positions;
+            /* Load positions from file */
             loadPointCloud(filename, positions);
             testStream.close();
-
-            int n = positions.size();
-
             
+            /* visualize! */
+            polyscope::registerPointCloud("Plane positions", positions);
+            ImGui::InputInt("Variable K", &knei);          // set a float variable
 
-            for(int i = 0; i < n; i++){
-                points.push_back ( {positions[i], {0,0,0}} );
-            }
-        
-
-            // visualize!
-            polyscope::registerPointCloud("SphereFittingPositions", positions);
-
-            ImGui::InputDouble("Scalar attribute", &tmax);  // set a double variable
-            ImGui::InputInt("Variable K", &knei);  // set a float variable
-            // KNN
-
-            if(ImGui::Button("Compute curvature with knn"))
+            if (ImGui::Button("Find Projections"))
             {
-
-                typedef Basket<MyPoint,WeightFunc,OrientedSphereFit,   GLSParam> SphereFit;
-
-                std::vector< Scalar > curvature(points.size());  
-
-                computeKnn<SphereFit>( kdtree, [&curvature]( int i, const SphereFit& _fit ) // c++lambda
+                vector<MyPoint> points;
+                for (const auto &p : positions)
                 {
-                    if( _fit.isStable() ){
-                        curvature[i] = _fit.kappa();  
-
-                    } 
-                    else
-                        curvature[i] = 0;  
+                    points.push_back({p, {0, 0, 0}});
                 }
-                );
-                polyscope::getPointCloud("positions")->addScalarQuantity("curvature_knn", curvature);
+
+                vector<VectorType> projected(compute<PlaneFit>(points));
+                polyscope::registerPointCloud("Plane projections", projected);
+            }
+            ImGui::TreePop();
+        }
+
+
+        if (ImGui::TreeNode("Sphere Fitting"))
+        {
+            typedef Basket<MyPoint, WeightFunc, OrientedSphereFit> SphereFit;
+            string filename = "hippo.ply";
+            std::ifstream testStream(filename);
+            if (!testStream)
+            {
+                exit(0);
             }
 
+            std::vector<std::array<double, 3>> positions;
+            /* Load positions from file */
+            loadPointCloud(filename, positions);
+            testStream.close();
             
+            /* visualize! */
+            polyscope::registerPointCloud("Sphere positions", positions);
+            ImGui::InputInt("Variable K", &knei);          // set a float variable
 
-            if (ImGui::Button("Compute Normals with knn")) 
+            if (ImGui::Button("Find Projections"))
             {
-                typedef Basket<MyPoint,WeightFunc,CovariancePlaneFit> PlaneFit;
-
-                std::vector< std::array<double, 3> > normals(points.size());  
-
-                computeKnn<PlaneFit>( kdtree, [&normals]( int i, const PlaneFit& _fit ) // c++lambda
+                vector<MyPoint> points;
+                for (const auto &p : positions)
                 {
-                    if( _fit.isStable() ){
-                            VectorType no = _fit.primitiveGradient(points.at(i).pos());
-                            normals[i] = {no[0],no[1], no[2]};
-                        } else
-                        normals[i] = {0,0,0};
+                    points.push_back({p, {0, 0, 0}});
                 }
-                );
-                polyscope::getPointCloud("positions")->addVectorQuantity("normals_knn", normals);
-            } 
 
-
-            // RN
-
-            if(ImGui::Button("Compute curvature with RN")) 
-            {
-
-                typedef Basket<MyPoint,WeightFunc,OrientedSphereFit,   GLSParam> SphereFit;
-
-                std::vector< Scalar > curvature(points.size());  
-
-                computeRangeNeighbors<SphereFit>( kdtree, [&curvature]( int i, const SphereFit& _fit ) // c++lambda
-                {
-                    if( _fit.isStable() ){
-                        curvature[i] = _fit.kappa();  
-
-                    } 
-                    else
-                        curvature[i] = 0;  
-                }
-                );
-                polyscope::getPointCloud("positions")->addScalarQuantity("curvature_RN", curvature);
+                vector<VectorType> projected(compute<SphereFit>(points));
+                polyscope::registerPointCloud("Sphere projections", projected);
             }
-
-            
-
-            if (ImGui::Button("Compute Normals with RN"))
-            {
-                typedef Basket<MyPoint,WeightFunc,CovariancePlaneFit> PlaneFit;
-
-                std::vector< std::array<double, 3> > normals(points.size());  
-
-                computeRangeNeighbors<PlaneFit>( kdtree, [&normals]( int i, const PlaneFit& _fit ) // c++lambda
-                {
-                    if( _fit.isStable() ){
-                            VectorType no = _fit.primitiveGradient(points.at(i).pos());
-                            normals[i] = {no[0],no[1], no[2]};
-                        } else
-                        normals[i] = {0,0,0};
-                }
-                );
-
-                polyscope::getPointCloud("positions")->addVectorQuantity("normals_RN", normals);
-            } 
-
-        
-
-                    
                 
-                    ImGui::TreePop();
-                }
 
+            ImGui::TreePop();
+        }
         ImGui::TreePop();
     }
-
     ImGui::PopItemWidth();
 }
 
+int main(int argc, char **argv)
+{
 
-
-
-int main(int argc, char **argv) {
-
-   
     polyscope::init();
-    
-    // Add the callback  
+
+    // Add the callback
     polyscope::state::userCallback = myCallback;
     // Show the gui
-    polyscope::show(); 
-    return 0;   
+    polyscope::show();
+    return 0;
 }
