@@ -79,12 +79,41 @@ void loadPointCloud(std::string filename,
 int knei = 10;
 Scalar tmax = 0.1;
 
-// to compute normals or curvature generalised using template and functors using KNN
+// to compute normals or curvature generalised using template and functors using K- nearest neighbors
 template <typename FitT>
-vector<VectorType> compute(const vector<MyPoint>& points)
+void compute(const string& filename)
 {
+
+    //checking the file
+    std::ifstream testStream(filename);
+    if (!testStream)
+    {
+        exit(0);
+    }
+    std::vector<std::array<double, 3>> positions;
+    /* Load positions from file */
+    loadPointCloud(filename, positions);
+    testStream.close();
+    string type = typeid(FitT).name();
+    
+    /* visualize! */
+    polyscope::registerPointCloud(type + " positions", positions);
+
+    vector<MyPoint> points;
+
+    /*
+     Note : In case of Sphere fitting if first if there are no normals present,
+      we will first need to compute normals using plane fitting and then show projection
+    */
+
+    for (const auto &p : positions)
+    {
+        points.push_back({p, {0, 0, 0}});
+    }
+
     KdTree<MyPoint> kdtree(points);
     vector<VectorType> projection(points.size());
+
     for (int i = 0; i < points.size(); i++)
     {
         // set evaluation point and scale at the ith coordinate
@@ -100,14 +129,15 @@ vector<VectorType> compute(const vector<MyPoint>& points)
             _fit.addNeighbor(points[idx]);
         }
         _fit.finalize();
+
         if(_fit.isStable())
-        {
-            
+        {    
             projection[i] = _fit.project(p).transpose();
         }
     }
+    /* visualize! */
+    polyscope::registerPointCloud(type + "projections", projection);
 
-    return projection;
 }
 
 // Your callback functions
@@ -120,109 +150,49 @@ void myCallback()
     ImGui::PushItemWidth(100); // Make ui elements 100 pixels wide,
                                // instead of full width. Must have
                                // matching PopItemWidth() below.
+
+    
     if (ImGui::TreeNode("Fitting"))
     {
         if (ImGui::TreeNode("Line Fitting"))
         {
-            typedef Basket<MyPoint, WeightFunc, LeastSquareLine> Linefit;
-            
             string filename = "line.ply";
-            std::ifstream testStream(filename);
-            if (!testStream)
-            {
-                exit(0);
-            }
-
-            std::vector<std::array<double, 3>> positions;
-            /* Load positions from file */
-            loadPointCloud(filename, positions);
-            testStream.close();
-            
-            /* visualize! */
-            polyscope::registerPointCloud("Line positions", positions);
             ImGui::InputInt("Variable K", &knei);          // set a float variable
 
             if (ImGui::Button("Find Projections"))
             {
-                vector<MyPoint> points;
-                for (const auto &p : positions)
-                {
-                    points.push_back({p, {0, 0, 0}});
-                }
-
-                vector<VectorType> projected(compute<Linefit>(points));
-                polyscope::registerPointCloud("Line projections", projected);
-
+                typedef Basket<MyPoint, WeightFunc, LeastSquareLine> Linefit;
+                compute<Linefit>(filename);
             }
+
             ImGui::TreePop();
         }
 
         if (ImGui::TreeNode("Plane Fitting"))
         {
-            typedef Basket<MyPoint, WeightFunc, CovariancePlaneFit> PlaneFit;
-        
             string filename = "hippo.ply";
-            std::ifstream testStream(filename);
-            if (!testStream)
-            {
-                exit(0);
-            }
-
-            std::vector<std::array<double, 3>> positions;
-            /* Load positions from file */
-            loadPointCloud(filename, positions);
-            testStream.close();
-            
-            /* visualize! */
-            polyscope::registerPointCloud("Plane positions", positions);
             ImGui::InputInt("Variable K", &knei);          // set a float variable
 
             if (ImGui::Button("Find Projections"))
             {
-                vector<MyPoint> points;
-                for (const auto &p : positions)
-                {
-                    points.push_back({p, {0, 0, 0}});
-                }
-
-                vector<VectorType> projected(compute<PlaneFit>(points));
-                polyscope::registerPointCloud("Plane projections", projected);
+                typedef Basket<MyPoint, WeightFunc, CovariancePlaneFit> Plane;
+                compute<Plane>(filename);
             }
+
             ImGui::TreePop();
         }
 
 
         if (ImGui::TreeNode("Sphere Fitting"))
         {
-            typedef Basket<MyPoint, WeightFunc, OrientedSphereFit> SphereFit;
             string filename = "hippo.ply";
-            std::ifstream testStream(filename);
-            if (!testStream)
-            {
-                exit(0);
-            }
-
-            std::vector<std::array<double, 3>> positions;
-            /* Load positions from file */
-            loadPointCloud(filename, positions);
-            testStream.close();
-            
-            /* visualize! */
-            polyscope::registerPointCloud("Sphere positions", positions);
             ImGui::InputInt("Variable K", &knei);          // set a float variable
-
+            
             if (ImGui::Button("Find Projections"))
             {
-                vector<MyPoint> points;
-                for (const auto &p : positions)
-                {
-                    points.push_back({p, {0, 0, 0}});
-                }
-
-                vector<VectorType> projected(compute<SphereFit>(points));
-                polyscope::registerPointCloud("Sphere projections", projected);
+                typedef Basket<MyPoint, WeightFunc, OrientedSphereFit> Sphere;
+                compute<Sphere>(filename);
             }
-                
 
             ImGui::TreePop();
         }
