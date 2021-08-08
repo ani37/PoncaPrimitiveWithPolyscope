@@ -22,3 +22,5 @@ make -j4
 
 
 Check out `src/main.cpp` to see the code.
+
+Files can be changed accordinly to the fitting method.
