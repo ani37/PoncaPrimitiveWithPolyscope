@@ -1,11 +1,13 @@
+
 /*
+ Copyright (C) 2021 aniket agarwalla <aniketagarwalla37@gmail.com>
+ 
  This Source Code Form is subject to the terms of the Mozilla Public
  License, v. 2.0. If a copy of the MPL was not distributed with this
  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
-
-#pragma onces
+#pragma once
 
 #include "./defines.h"
 #include "./primitive.h" // PrimitiveBase
@@ -15,12 +17,10 @@
 namespace Ponca
 {
 
-
 /*!
-    \brief A parametrized line is defined by an origin point o and a unit direction vector d such that the line corresponds to the set l(t)=o+td, t∈R.
-
-    In 3-dimensionnal space, the line is defined using a point and a direction vector.
-
+    \brief A parametrized line is defined by an origin point \f$\mathbf{o}\f$ and a unit direction vector
+    \f$\overrightarrow{\mathbf{d}}\f$ such that the line corresponds to the set
+    \f$l(t)=\mathbf{o}+t\overrightarrow{\mathbf{d}}, t\in \mathbb{R}\f$.
 
     This class inherits Eigen::ParametrizedLine.
 
@@ -63,13 +63,6 @@ public:
     /*! \brief Weight Function */
     typedef _WFunctor                       WFunctor;
 
-
-// private:
-//     /*! \brief  The equation of a line with a point vectorType point 
-//     and direction vectorType direction */
-//     VectorType _direction;
-//     VectorType _point; 
-
 private:
 
     /*! \brief Evaluation position (needed for centered basis) */
@@ -91,17 +84,14 @@ public:
     Line<DataPoint, WFunctor, T>& line()
     { return * static_cast<Line<DataPoint, WFunctor, T>*>(this); }
 
-    /*! \brief Set the scalar field values to 0 and reset the isNormalized() status
-
-        \warning Set a_y to Zero(), which leads to nans in OrientedLine::normal()
-        \FIXME Set and use Base::m_state to handle invalid configuration
+    /*!
+     * \brief Set the scalar field values to 0 and reset the distance() and origin() status
     */
     PONCA_MULTIARCH inline void resetPrimitive()
     {
         Base::resetPrimitive();
         EigenBase* cc = static_cast<EigenBase*>(this);
         *cc = EigenBase();
-
     }
     /*! \brief Comparison operator */
     PONCA_MULTIARCH inline bool operator==(const Line<DataPoint, WFunctor, T>& other) const{
@@ -118,35 +108,31 @@ public:
     PONCA_MULTIARCH inline       VectorType& basisCenter ()       { return m_p; }
 
 
-    /* \brief Init the line from a direction and a position
+    /*! \brief Init the line from a direction and a position
        \param _dir Orientation of the line, does not need to be normalized
        \param _pos Position of the line
     */
-    PONCA_MULTIARCH inline void setLine (const VectorType& _origin,
-                                    const VectorType& _direction)
+    PONCA_MULTIARCH inline void setLine (const VectorType& origin,
+                                         const VectorType& direction)
     {
         EigenBase* cc = static_cast<EigenBase*>(this);
-        *cc = EigenBase(_origin, _direction);
+        *cc = EigenBase(origin, direction);
     }
 
-     //! \brief direction of the  lines
-    PONCA_MULTIARCH inline VectorType direction () const
+    /*! \brief Value of the scalar field at the evaluation point */
+    PONCA_MULTIARCH inline Scalar potential ( ) const
     {
-        // Uniform direction defined only by the orientation of the line
-        return EigenBase::direction();
-    }
-     //! \brief point on the fitting line
-    PONCA_MULTIARCH inline VectorType point () const
-    {
-        // Uniform point defined only by the orientation of the line
-        return EigenBase::origin();
+        // The potential is the distance from a point to the line
+        return EigenBase::squaredDistance( m_p);
     }
 
-    //! \brief Value of the scalar field at the location \f$ \mathbf{q} \f$
-    PONCA_MULTIARCH inline Scalar distance (const VectorType& _q) const
+    /*!  \brief Value of the scalar field at the location \f$ \mathbf{q} \f$,
+     * defined as the squared distance between \f$ \mathbf{q} \f$ and the line
+     */
+    PONCA_MULTIARCH inline Scalar potential (const VectorType& _q) const
     {
-        // The potential is the distance from the point to the line
-        return EigenBase::distance(_q - m_p);
+        // The potential is the distance from a point to the line
+        return EigenBase::squaredDistance(_q - m_p);
     }
 
     //! \brief Project a point on the line
@@ -155,19 +141,6 @@ public:
         // Project on the normal vector and add the offset value
         return EigenBase::projection(_q - m_p) + m_p;
     }
-
-
-    /*!
-        \brief Used to know if the fitting result to a line
-        \return true if finalize() have been called and the fitting result to a line
-    */
-    PONCA_MULTIARCH inline bool isLine() const
-    {
-        
-        bool bReady    = Base::isReady();
-        return bReady;
-    }
-
 }; //class Line
 
 

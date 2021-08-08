@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2018 Nicolas Mellado <nmellado0@gmail.com>
+ Copyright (C) 2021 aniket agarwalla <aniketagarwalla37@gmail.com>
 
  This Source Code Form is subject to the terms of the Mozilla Public
  License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -7,38 +7,32 @@
 */
 
 #pragma once
+#include "./defines.h"
 
-#include "./plane.h"
+#include <Eigen/Dense>
 
 namespace Ponca
 {
 
 /*!
-    \brief Plane fitting procedure computing the mean position and orientation
-    from oriented points
+   \brief Line fitting procedure that minimize the orthogonal distance between the samples and the fitted primitive.
 
-    \inherit Concept::FittingProcedureConcept
+   \inherit Concept::FittingProcedureConcept
+   \see Line
+   \see CovariancePlaneFit which use a similar approach for Plane estimation
 
-    \see Plane
-    \todo Add derivatives
+   \warning This class is valid only in 3D.
+   \ingroup fitting
+ */
 
-    \ingroup fitting
-*/
-template < class DataPoint, class _WFunctor, typename T >
-class MeanPlaneFit : public Plane<DataPoint, _WFunctor>
+template < class DataPoint, class _WFunctor, typename T>
+class CovarianceLineFit : public Line<DataPoint, _WFunctor>
 {
 private:
-    typedef Plane<DataPoint, _WFunctor> Base;
-
-protected:
-    enum
-    {
-        Check = Base::PROVIDES_PLANE
-    };
+    typedef Line<DataPoint, _WFunctor> Base;
 
 public:
-
-    /*! \brief Scalar type inherited from DataPoint*/
+   /*! \brief Scalar type inherited from DataPoint*/
     typedef typename Base::Scalar     Scalar;
     /*! \brief Vector type inherited from DataPoint*/
     typedef typename Base::VectorType VectorType;
@@ -46,21 +40,25 @@ public:
     typedef typename Base::MatrixType MatrixType;
     /*! \brief Weight Function*/
     typedef _WFunctor                 WFunctor;
+    /*! \brief Solver used to analyse the covariance matrix*/
+    typedef Eigen::SelfAdjointEigenSolver<MatrixType> Solver;
 
- protected:
+protected:
+     // computation data
+    Scalar  m_sum;       /*!< \brief total number of queries .*/
+    VectorType m_cog;     /*!< \brief Gravity center of the neighborhood */
+    MatrixType m_cov;     /*!< \brief Covariance matrix */
 
-    // computation data
-    Scalar      m_sumW;    /*!< \brief Sum of queries weight.*/
-    VectorType  m_sumN,    /*!< \brief Sum of the normal vectors */
-                m_sumP;    /*!< \brief Sum of the relative positions */
-
+    Solver m_solver;  /*!<\brief Solver used to analyse the covariance matrix */
     WFunctor m_w;     /*!< \brief Weight function (must inherits BaseWeightFunc) */
 
 public:
-
-    /*! \brief Default constructor */
-    PONCA_MULTIARCH inline MeanPlaneFit() : Base() {}
-
+     /*! \brief Default constructor */
+    PONCA_MULTIARCH inline CovarianceLineFit() : Base() {}
+    //! \brief Explicit conversion to CovarianceLineFit, to access methods potentially hidden by inheritage */
+    PONCA_MULTIARCH inline
+    CovarianceLineFit<DataPoint, WFunctor, T>& leastSquareLine()
+    { return * static_cast<CovarianceLineFit<DataPoint, WFunctor, T>*>(this); }
     /**************************************************************************/
     /* Initialization                                                         */
     /**************************************************************************/
@@ -78,9 +76,14 @@ public:
 
     /*! \copydoc Concept::FittingProcedureConcept::finalize() */
     PONCA_MULTIARCH inline FIT_RESULT finalize();
-}; //class MeanPlaneFit
 
+    /*! \brief Reading access to the Solver used to analyse the covariance
+      matrix */
+    PONCA_MULTIARCH inline const Solver& solver() const { return m_solver; }
+  
 
-#include "meanPlaneFit.hpp"
+};
+
+#include "covarianceLineFit.hpp"
 
 } //namespace Ponca

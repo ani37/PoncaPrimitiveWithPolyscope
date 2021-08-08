@@ -40,6 +40,7 @@ public:
     {
         Dim = DIMENSION
     };
+
     typedef double Scalar;
     typedef Eigen::Matrix<Scalar, Dim, 1> VectorType;
     typedef Eigen::Matrix<Scalar, Dim, Dim> MatrixType;
@@ -95,6 +96,8 @@ void compute(const string& filename)
     loadPointCloud(filename, positions);
     testStream.close();
     string type = typeid(FitT).name();
+    type = type.substr(80);
+    type = type.substr(0,type.find("ENS"));
     
     /* visualize! */
     polyscope::registerPointCloud(type + " positions", positions);
@@ -136,7 +139,7 @@ void compute(const string& filename)
         }
     }
     /* visualize! */
-    polyscope::registerPointCloud(type + "projections", projection);
+    polyscope::registerPointCloud(type + " projections", projection);
 
 }
 
@@ -150,18 +153,17 @@ void myCallback()
     ImGui::PushItemWidth(100); // Make ui elements 100 pixels wide,
                                // instead of full width. Must have
                                // matching PopItemWidth() below.
-
-    
     if (ImGui::TreeNode("Fitting"))
     {
         if (ImGui::TreeNode("Line Fitting"))
         {
             string filename = "line.ply";
             ImGui::InputInt("Variable K", &knei);          // set a float variable
+            ImGui::InputDouble("Scalar attribute", &tmax);  // set a double variable
 
             if (ImGui::Button("Find Projections"))
             {
-                typedef Basket<MyPoint, WeightFunc, LeastSquareLine> Linefit;
+                typedef Basket<MyPoint, WeightFunc, CovarianceLineFit> Linefit;
                 compute<Linefit>(filename);
             }
 
@@ -172,6 +174,7 @@ void myCallback()
         {
             string filename = "hippo.ply";
             ImGui::InputInt("Variable K", &knei);          // set a float variable
+            ImGui::InputDouble("Scalar attribute", &tmax);  // set a double variable
 
             if (ImGui::Button("Find Projections"))
             {
@@ -182,11 +185,11 @@ void myCallback()
             ImGui::TreePop();
         }
 
-
         if (ImGui::TreeNode("Sphere Fitting"))
         {
             string filename = "hippo.ply";
             ImGui::InputInt("Variable K", &knei);          // set a float variable
+            ImGui::InputDouble("Scalar attribute", &tmax);  // set a double variable
             
             if (ImGui::Button("Find Projections"))
             {
@@ -196,16 +199,31 @@ void myCallback()
 
             ImGui::TreePop();
         }
+
+        if (ImGui::TreeNode("Surface Fitting"))
+        {
+            string filename = "hippo.ply";
+            ImGui::InputInt("Variable K", &knei);          // set a float variable
+            ImGui::InputDouble("Scalar attribute", &tmax);  // set a double variable
+            
+            if (ImGui::Button("Find Projections"))
+            {
+                typedef Basket<MyPoint, WeightFunc, LeastSquareSurfaceFit> Surface;
+                compute<Surface>(filename);
+            }
+
+            ImGui::TreePop();
+        }
+
         ImGui::TreePop();
     }
+
     ImGui::PopItemWidth();
 }
 
 int main(int argc, char **argv)
 {
-
     polyscope::init();
-
     // Add the callback
     polyscope::state::userCallback = myCallback;
     // Show the gui
