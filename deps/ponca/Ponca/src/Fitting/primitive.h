@@ -58,7 +58,7 @@ public:
     {
         return (m_eCurrentState == STABLE) || (m_eCurrentState == UNSTABLE);
     }
-
+    
     /*! \brief Is the plane fitted an ready to use (finalize has been called
     and the result is stable, eq. having more than 6 neighbors) */
     PONCA_MULTIARCH inline bool isStable() const { return m_eCurrentState == STABLE; }

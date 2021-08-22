@@ -28,6 +28,8 @@
 #include "src/Fitting/linePrimitive.h"
 #include "src/Fitting/leastSquareLine.h"
 
+#include "src/Fitting/surfacePrimitive.h"
+#include "src/Fitting/leastSquareSurfaceFit.h"
 
 #include "src/Fitting/curvatureEstimation.h"
 

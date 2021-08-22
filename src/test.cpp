@@ -139,7 +139,7 @@ std::vector<std::array<Scalar, 3> > read_csv(string filename)
 
 
 int knei = 50;
-Scalar tmax = 5;
+Scalar tmax = 10;
 vector<MyPoint> points;
 
 // to compute normals generalised using template and functors using KNN
@@ -182,7 +182,7 @@ int main(int argc, char **argv) {
     for(int i = 0; i < n; i++){
          VectorType a = VectorType::Random();
   
-         a[2] = -(a[0] + a[1]*a[1]) ;
+         a[2] = -(a[0] + a[1]*a[1] ) ;
          pro[i] = {a[0], a[1], a[2]};
      }
 
