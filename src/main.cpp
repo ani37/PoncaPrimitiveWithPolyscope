@@ -35,7 +35,15 @@ using namespace Ponca;
 class MyPoint
 {
 public:
+<<<<<<< HEAD
     enum {Dim = DIMENSION};
+=======
+    enum
+    {
+        Dim = DIMENSION
+    };
+
+>>>>>>> b40f58355bce490ea23ae6fb6e4e97a8a1b2fe35
     typedef double Scalar;
     typedef Eigen::Matrix<Scalar, Dim, 1>   VectorType;
     typedef Eigen::Matrix<Scalar, Dim, Dim> MatrixType;
@@ -135,6 +143,37 @@ std::vector<std::array<Scalar, 3> > read_csv(string filename)
   return point_cloud;
 }
 
+<<<<<<< HEAD
+=======
+    //checking the file
+    std::ifstream testStream(filename);
+    if (!testStream)
+    {
+        exit(0);
+    }
+    std::vector<std::array<double, 3>> positions;
+    /* Load positions from file */
+    loadPointCloud(filename, positions);
+    testStream.close();
+    string type = typeid(FitT).name();
+    type = type.substr(80);
+    type = type.substr(0,type.find("ENS"));
+    
+    /* visualize! */
+    polyscope::registerPointCloud(type + " positions", positions);
+
+    vector<MyPoint> points;
+
+    /*
+     Note : In case of Sphere fitting if first if there are no normals present,
+      we will first need to compute normals using plane fitting and then show projection
+    */
+
+    for (const auto &p : positions)
+    {
+        points.push_back({p, {0, 0, 0}});
+    }
+>>>>>>> b40f58355bce490ea23ae6fb6e4e97a8a1b2fe35
 
 
 
@@ -164,6 +203,7 @@ void computeKnn(const vector<MyPoint> points, const KdTree<MyPoint>& structure, 
         _fit.finalize();
 	     f( i, _fit );
     }
+<<<<<<< HEAD
 }
 
  
@@ -171,13 +211,51 @@ int main(int argc, char **argv) {
 
    
     polyscope::init();
+=======
+    /* visualize! */
+    polyscope::registerPointCloud(type + " projections", projection);
+
+}
+
+// Your callback functions
+void myCallback()
+{
+
+    // Since options::openImGuiWindowForUserCallback == true by default,
+    // we can immediately start using ImGui commands to build a UI
+
+    ImGui::PushItemWidth(100); // Make ui elements 100 pixels wide,
+                               // instead of full width. Must have
+                               // matching PopItemWidth() below.
+    if (ImGui::TreeNode("Fitting"))
+    {
+        if (ImGui::TreeNode("Line Fitting"))
+        {
+            string filename = "line.ply";
+            ImGui::InputInt("Variable K", &knei);          // set a float variable
+            ImGui::InputDouble("Scalar attribute", &tmax);  // set a double variable
+
+            if (ImGui::Button("Find Projections"))
+            {
+                typedef Basket<MyPoint, WeightFunc, CovarianceLineFit> Linefit;
+                compute<Linefit>(filename);
+            }
+>>>>>>> b40f58355bce490ea23ae6fb6e4e97a8a1b2fe35
 
     string filename = "x_y_z.csv";
    
     std::vector< std::array<Scalar, 3> > positions(read_csv(filename));    
 
+<<<<<<< HEAD
     int n = 1000;
     std::vector< std::array<Scalar, 3> > pro(n); 
+=======
+        if (ImGui::TreeNode("Plane Fitting"))
+        {
+            string filename = "hippo.ply";
+            ImGui::InputInt("Variable K", &knei);          // set a float variable
+            ImGui::InputDouble("Scalar attribute", &tmax);  // set a double variable
+>>>>>>> b40f58355bce490ea23ae6fb6e4e97a8a1b2fe35
 
     for(int i = 0; i < n; i++){
          VectorType a = VectorType::Random();
@@ -190,6 +268,7 @@ int main(int argc, char **argv) {
         points.push_back({pro[i], {0,0,0}});
     }
 
+<<<<<<< HEAD
     KdTree<MyPoint> kdtree(points);
      
     std::vector< VectorType > projected(points.size()); 
@@ -197,6 +276,15 @@ int main(int argc, char **argv) {
     computeKnn<Surfacefit>(points, kdtree, [&projected]( int i,  Surfacefit& _fit ) // c++lambda
     {
         if(_fit.isStable() )
+=======
+        if (ImGui::TreeNode("Sphere Fitting"))
+        {
+            string filename = "hippo.ply";
+            ImGui::InputInt("Variable K", &knei);          // set a float variable
+            ImGui::InputDouble("Scalar attribute", &tmax);  // set a double variable
+            
+            if (ImGui::Button("Find Projections"))
+>>>>>>> b40f58355bce490ea23ae6fb6e4e97a8a1b2fe35
             {
                 
                 projected[i] = _fit.project(points[i].pos());
@@ -206,12 +294,44 @@ int main(int argc, char **argv) {
             projected[i] = {0,0,0};  
     });
 
+<<<<<<< HEAD
     // // visualize!
     polyscope::registerPointCloud("positions", pro);
     polyscope::registerPointCloud("projection", projected);
     //polyscope::getPointCloud("positions")->addVectorQuantity("normals", projected);
 
 
+=======
+            ImGui::TreePop();
+        }
+
+        if (ImGui::TreeNode("Surface Fitting"))
+        {
+            string filename = "hippo.ply";
+            ImGui::InputInt("Variable K", &knei);          // set a float variable
+            ImGui::InputDouble("Scalar attribute", &tmax);  // set a double variable
+            
+            if (ImGui::Button("Find Projections"))
+            {
+                typedef Basket<MyPoint, WeightFunc, LeastSquareSurfaceFit> Surface;
+                compute<Surface>(filename);
+            }
+
+            ImGui::TreePop();
+        }
+
+        ImGui::TreePop();
+    }
+
+    ImGui::PopItemWidth();
+}
+
+int main(int argc, char **argv)
+{
+    polyscope::init();
+    // Add the callback
+    polyscope::state::userCallback = myCallback;
+>>>>>>> b40f58355bce490ea23ae6fb6e4e97a8a1b2fe35
     // Show the gui
     polyscope::show(); 
     return 0;   

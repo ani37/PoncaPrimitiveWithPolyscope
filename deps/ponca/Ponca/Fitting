@@ -25,13 +25,21 @@
 #include "src/Fitting/curvature.h"
 #include "src/Fitting/gls.h"
 
+<<<<<<< HEAD
 #include "src/Fitting/linePrimitive.h"
 #include "src/Fitting/leastSquareLine.h"
 
 #include "src/Fitting/surfacePrimitive.h"
 #include "src/Fitting/leastSquareSurfaceFit.h"
 
+=======
+>>>>>>> b40f58355bce490ea23ae6fb6e4e97a8a1b2fe35
 #include "src/Fitting/curvatureEstimation.h"
+
+#include "src/Fitting/linePrimitive.h"
+#include "src/Fitting/covarianceLineFit.h"
+#include "src/Fitting/surfacePrimitive.h"
+#include "src/Fitting/leastSquareSurfaceFit.h"
 
 // not supported on cuda
 #ifndef __CUDACC__

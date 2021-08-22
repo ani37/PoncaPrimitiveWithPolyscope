@@ -42,8 +42,13 @@ LeastSquareSurfaceFit<DataPoint, _WFunctor, T>::addNeighbor(const DataPoint& _ne
       Eigen::Matrix<Scalar, 9, 1> temp;
       temp << q[0] * q[0], q[1] * q[1] ,q[2] * q[2] , 2* q[0] * q[1] , 2*q[0] * q[2] , 2 * q[1] * q[2] , 2*q; 
      
+<<<<<<< HEAD
       m_right -=  temp;
       m_cov  +=   temp * temp.transpose(); 
+=======
+      m_right -= temp;
+      m_cov  +=  temp * temp.transpose(); 
+>>>>>>> b40f58355bce490ea23ae6fb6e4e97a8a1b2fe35
       ++(Base::m_nbNeighbors);
       
       return true;
@@ -69,8 +74,12 @@ LeastSquareSurfaceFit<DataPoint, _WFunctor, T>::finalize ()
     #ifdef __CUDACC__
       m_solver.computeDirect(m_cov);
     #else
+<<<<<<< HEAD
       cofficient = (m_cov).fullPivHouseholderQr().solve( m_right);
 
+=======
+      cofficient = m_cov.colPivHouseholderQr().solve(m_right) ;
+>>>>>>> b40f58355bce490ea23ae6fb6e4e97a8a1b2fe35
     #endif
 
     Base::m_eCurrentState = ( m_right.isApprox(m_cov * cofficient)  == true ? STABLE : UNDEFINED );
@@ -107,18 +116,28 @@ LeastSquareSurfaceFit<DataPoint, _WFunctor, T>::project( const VectorType& _q, i
     VectorType grad;
     VectorType dir  = primitiveGradient(_q);
     Scalar ilg      = Scalar(1.)/dir.norm();
+<<<<<<< HEAD
    //  std ::cout << ilg << '\n';
     dir             = dir*ilg;
  //   Scalar ad       = m_uc + m_ul.dot(lq) + m_uq * lq.squaredNorm();
     Scalar delta    = -min(ilg,Scalar(1.0)) *0.01;
+=======
+    dir             = dir*ilg;
+ //   Scalar ad       = m_uc + m_ul.dot(lq) + m_uq * lq.squaredNorm();
+    Scalar delta    = -min(ilg,Scalar(1.));
+>>>>>>> b40f58355bce490ea23ae6fb6e4e97a8a1b2fe35
     VectorType proj = lq + dir*delta;
 
     for (int i=0; i<nbIter; ++i)
     {
         grad  = primitiveGradient(proj);
         ilg   = Scalar(1.)/grad.norm();
+<<<<<<< HEAD
       //  std ::cout << ilg << '\n';
         delta = -min(ilg,Scalar(1.0)) * 0.01;
+=======
+        delta = -min(ilg,Scalar(1.));
+>>>>>>> b40f58355bce490ea23ae6fb6e4e97a8a1b2fe35
         proj += dir*delta;
     }
     return proj + Base::basisCenter();
